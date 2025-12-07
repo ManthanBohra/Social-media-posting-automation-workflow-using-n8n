@@ -1,4 +1,4 @@
-🚀 Social Media Posting Automation using n8n
+#🚀 Social Media Posting Automation using n8n
 
 This project is a fully automated workflow built using n8n that allows you to schedule and publish posts automatically to multiple social media platforms such as:
 
