@@ -1,0 +1,189 @@
+{
+    "name": "Advanced Website AI Bot Automation (n8n)",
+    "nodes": [
+        {
+            "id": "1",
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                300,
+                300
+            ],
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "advanced-website-ai-bot",
+                "options": {}
+            }
+        },
+        {
+            "id": "2",
+            "name": "Extract Message & User Info",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                550,
+                300
+            ],
+            "parameters": {
+                "functionCode": "\n                return [{\n                    message: $json.body.message,\n                    email: $json.body.email,\n                    source: $json.body.source,\n                    timestamp: new Date().toISOString()\n                }];\n                "
+            }
+        },
+        {
+            "id": "3",
+            "name": "Prepare AI Prompt",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 1,
+            "position": [
+                800,
+                300
+            ],
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "prompt",
+                            "value": "Respond to the user query: {{$json.message}} as a helpful AI assistant for the website."
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "4",
+            "name": "AI Response (OpenAI GPT-4 Mini)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                1050,
+                300
+            ],
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.openai.com/v1/chat/completions",
+                "authentication": "headerAuth",
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer YOUR_OPENAI_KEY"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "jsonParameters": true,
+                "bodyParametersJson": "{\"model\": \"gpt-4o-mini\", \"messages\": [{\"role\": \"system\", \"content\": \"You are an expert AI bot for website support.\"}, {\"role\": \"user\", \"content\": \"={{$json[\\\"prompt\\\"]}}\"}]}"
+            }
+        },
+        {
+            "id": "5",
+            "name": "Save Lead (Google Sheets)",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4,
+            "position": [
+                1050,
+                550
+            ],
+            "parameters": {
+                "operation": "append",
+                "sheetId": "YOUR_GOOGLE_SHEET_ID",
+                "range": "Leads!A:D",
+                "options": {},
+                "value": [
+                    {
+                        "values": [
+                            "={{$json.email}}",
+                            "={{$json.message}}",
+                            "={{$json.timestamp}}",
+                            "={{$json.source}}"
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "6",
+            "name": "Send Email Notification",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 1,
+            "position": [
+                1350,
+                550
+            ],
+            "parameters": {
+                "operation": "send",
+                "toList": "yourcompany@gmail.com",
+                "subject": "New Lead from Website AI Bot",
+                "message": "A user sent a message: {{$json.message}}"
+            }
+        },
+        {
+            "id": "7",
+            "name": "Return Response to User",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1350,
+                300
+            ],
+            "parameters": {
+                "responseBody": "={{$json.choices[0].message.content}}"
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Message & User Info"
+                    }
+                ]
+            ]
+        },
+        "Extract Message & User Info": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare AI Prompt"
+                    }
+                ],
+                [
+                    {
+                        "node": "Save Lead"
+                    }
+                ]
+            ]
+        },
+        "Prepare AI Prompt": {
+            "main": [
+                [
+                    {
+                        "node": "AI Response (OpenAI GPT-4 Mini)"
+                    }
+                ]
+            ]
+        },
+        "AI Response (OpenAI GPT-4 Mini)": {
+            "main": [
+                [
+                    {
+                        "node": "Return Response to User"
+                    }
+                ]
+            ]
+        },
+        "Save Lead (Google Sheets)": {
+            "main": [
+                [
+                    {
+                        "node": "Send Email Notification"
+                    }
+                ]
+            ]
+        }
+    }
+}
